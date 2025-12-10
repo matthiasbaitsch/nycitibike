@@ -1,8 +1,18 @@
-cache_path <- function()
-  file.path(archive_path(), "cache")
+cache_path <- function(file = NULL) {
+  if (is.null(file)) {
+    file.path(archive_path(), "cache")
+  } else {
+    file.path(archive_path(), "cache", file)
+  }
+}
 
-cache_clear <- function()
+cache_path_trips_raw.rds <- function(year) {
+  cache_path(paste0("trips-", year, ".rds"))
+}
+
+cache_clear <- function() {
   fs::dir_delete(cache_path())
+}
 
 #' Unzip file from archive to cache folder.
 #'
@@ -10,8 +20,6 @@ cache_clear <- function()
 #' @param path Path within archive
 #'
 #' @returns Path to chached file
-#'
-#' @examples
 cache_archive <- function(archive, path) {
   cachedir <- file.path(cache_path(), paste0(basename(archive), ".dir"))
   path <- file.path(cachedir, path)

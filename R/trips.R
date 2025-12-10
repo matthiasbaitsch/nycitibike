@@ -106,8 +106,8 @@ trips_read_one_file <- function(archive, path, path2, depth = NA, year = NA) {
 
   if (format <= 3) {
     # Old format
-    # Fields 2 and 3 are dates, however, read it as character since
-    # date format varies
+
+    # Read dates in fields 2 and 3 as character for later processing
     d <- readr::read_csv(
       archive_read_2(archive, path, path2),
       col_types = "nccccnnccnnncnn",
@@ -116,17 +116,18 @@ trips_read_one_file <- function(archive, path, path2, depth = NA, year = NA) {
 
     # Uppercase format
     if (format == 3) {
+      # XXX Use one line
       f2 <- trips_csv_header_from_format(2)
       f3 <- trips_csv_header_from_format(3)
       names(f3) <- f2
       d <- d |>
-        rename(all_of(f3))
+        dplyr::rename(all_of(f3))
     }
 
     # To new format
     d <- d |>
-      mutate(rideable_type = "classic_bike") |>
-      select(
+      dplyr::mutate(rideable_type = "classic_bike") |>
+      dplyr::select(
         rideable_type,
         started_at = starttime,
         ended_at = stoptime,
@@ -138,25 +139,27 @@ trips_read_one_file <- function(archive, path, path2, depth = NA, year = NA) {
         start_lng = `start station longitude`,
         end_lat = `end station latitude`,
         end_lng = `end station longitude`,
+        bike_id = bikeid
       )
   } else if (format == 4) {
     # New format
-    d <- read_csv(
-      archive_read_2(archive, path, path2),
-      col_types = "ccccccccddddc",
-      na = na
-    ) |>
-      select(
+    d <-
+      readr::read_csv(
+        archive_read_2(archive, path, path2),
+        col_types = "ccccccccddddc",
+        na = na
+      ) |>
+      dplyr::select(
         -ride_id,
         -member_casual
       )
   }
 
   # Date
-  dp <- pluck(d, "started_at", 1) |> csv_get_date_parser()
+  dp <- purrr::pluck(d, "started_at", 1) |> csv_get_date_parser()
 
   d <- d |>
-    mutate(
+    dplyr::mutate(
       started_at = dp(started_at),
       ended_at = dp(ended_at)
     )
@@ -164,8 +167,29 @@ trips_read_one_file <- function(archive, path, path2, depth = NA, year = NA) {
   d
 }
 
-trips_read <- function(year) {
-  archive_ls(year) |>
-    pmap(trips_read_one_file, .progress = TRUE) |>
-    list_rbind()
+# Cache all years with
+# `trips_list_years() |> walk(trips_cache)`
+trips_cache <- function(year, .progress = TRUE) {
+  cf <- cache_path_trips_raw.rds(year)
+  if (!file.exists(cf)) {
+    if (.progress) {
+      message(paste("Reading raw trips for", year))
+    }
+    d <- archive_ls(year) |>
+      dplyr::slice_min(order_by = depth) |>
+      purrr::pmap(trips_read_one_file, .progress = .progress) |>
+      purrr::list_rbind()
+    readr::write_rds(d, cf)
+    d
+  }
+}
+
+trips_read <- function(year, .progress = TRUE) {
+  cf <- cache_path_trips_raw.rds(year)
+  if (file.exists(cf)) {
+    d <- readr::read_rds(cf)
+  } else {
+    d <- trips_cache(year, .progress = .progress)
+  }
+  d
 }
