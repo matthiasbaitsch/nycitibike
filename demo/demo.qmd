@@ -1,0 +1,81 @@
+---
+title: Citybike data files
+execute: 
+  echo: false
+---
+
+```{r}
+#| include: false
+library(gt)
+library(tidyverse)
+devtools::load_all()
+```
+
+## Content of archives
+
+Archives contain multiple CSV files with seemingly redundant content in a folder structure.
+
+```{r}
+archive_ls(2013) |>
+  gt()
+```
+
+Other archives contain archives, `path2` refers to the path inside the nested archive.
+
+```{r}
+archive_ls(2022) |>
+  gt()
+```
+
+## CSV files
+
+Headers in CSV files vary. In the table, year refers to the first and the last year a header shows up.
+
+```{r}
+trips_list_csv_headers(with_years = TRUE) |>
+  gt()
+```
+
+Date formats vary as well.
+
+```{r}
+trips_list_years() |>
+  map(archive_ls) |>
+  list_rbind() |>
+  mutate(
+    date = csv_extract_date_field(archive, path, path2),
+    date_format = csv_identify_date_format(date)
+  ) |>
+  group_by(date_format) |>
+  select(-path2, -depth, -year) |>
+  slice_head() |>
+  gt()
+```
+
+## Tables
+
+```{r}
+d1 <- archive_ls(2013) |>
+  filter(depth == 1) |>
+  pmap(trips_read_one_file) |>
+  list_rbind() |>
+  arrange(started_at)
+d1 |> gt_preview()
+```
+
+```{r}
+d2 <- archive_ls(2013) |>
+  filter(depth == 2) |>
+  pmap(trips_read_one_file) |>
+  list_rbind()|>
+  arrange(started_at)
+d2 |> gt_preview()
+```
+
+```{r}
+d1i <- d1 |> mutate(end_station_id = as.integer(end_station_id))
+d2i <- d2 |> mutate(end_station_id = as.integer(end_station_id))
+all.equal(d1i, d2i)
+```
+
+

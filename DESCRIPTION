@@ -1,11 +1,23 @@
 Package: citybikenyc
-Title: What the Package Does (One Line, Title Case)
+Title: New York Citybike Trips
 Version: 0.0.0.9000
 Authors@R: 
-    person("First", "Last", , "first.last@example.com", role = c("aut", "cre"))
-Description: What the package does (one paragraph).
-License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
-    license
+    person("Matthias", "Baitsch", , "matthias.baitsch@me.com", role = c("aut", "cre"))
+Description: Convenient access to New York Citybike trip data.
+License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
+Imports: 
+    archive,
+    aws.s3,
+    dplyr,
+    fs,
+    here,
+    purrr,
+    R.cache,
+    stringr,
+    tidyr
+Suggests: 
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
