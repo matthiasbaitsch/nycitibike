@@ -1,10 +1,10 @@
 R.cache::clearCache(prompt = FALSE)
 
-trips_download_data(2013)
-trips_download_data(2014)
-trips_download_data(2015)
-trips_download_data(2016)
-trips_download_data(2018)
-trips_download_data(2020)
-trips_download_data(2022)
+archive_download(2013)
+archive_download(2014)
+archive_download(2015)
+archive_download(2016)
+archive_download(2018)
+archive_download(2020)
+archive_download(2022)
 

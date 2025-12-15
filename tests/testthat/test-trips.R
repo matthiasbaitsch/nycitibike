@@ -29,7 +29,7 @@ test_that("headers are complete and in order", {
   years <- c(2013, 2016, 2018, 2020)
 
   # No years, test content
-  d <- trips_list_csv_headers(
+  d <- csv_list_headers(
     years = years,
     with_years = FALSE
   )
@@ -46,14 +46,14 @@ test_that("headers are complete and in order", {
   )
 
   # With years, just test count
-  d <- trips_list_csv_headers(
+  d <- csv_list_headers(
     years = years,
     with_years = TRUE
   )
   expect_equal(nrow(d), 6)
 
   # With years, not reduced, just test count
-  d <- trips_list_csv_headers(
+  d <- csv_list_headers(
     years = years,
     with_years = TRUE,
     .reduce = FALSE

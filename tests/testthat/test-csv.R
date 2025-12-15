@@ -33,28 +33,28 @@ date_times = c(
 )
 
 test_that("header id is detected", {
-  f <- trips_csv_header(
+  f <- csv_header(
     "2013-citibike-tripdata.zip",
     "2013-citibike-tripdata/201309-citibike-tripdata.csv"
   ) |>
     csv_format_from_header()
   expect_equal(f, 1)
 
-  f <- trips_csv_header(
+  f <- csv_header(
     "2016-citibike-tripdata.zip",
     "2016-citibike-tripdata/4_April/201604-citibike-tripdata_2.csv"
   ) |>
     csv_format_from_header()
   expect_equal(f, 2)
 
-  f <- trips_csv_header(
+  f <- csv_header(
     "2016-citibike-tripdata.zip",
     "2016-citibike-tripdata/12_December/201612-citibike-tripdata_1.csv"
   ) |>
     csv_format_from_header()
   expect_equal(f, 3)
 
-  f <- trips_csv_header(
+  f <- csv_header(
     "2020-citibike-tripdata.zip",
     "2020-citibike-tripdata/202004-citibike-tripdata.zip",
     "202004-citibike-tripdata_1.csv"

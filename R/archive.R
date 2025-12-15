@@ -1,10 +1,56 @@
 archive_path <- function() here::here("data")
 
+get_aws_bucket_df <- function() {
+  R.cache::evalWithMemoization(
+    aws.s3::get_bucket_df(
+      bucket = "s3://tripdata/"
+    )
+  )
+}
+
+archive_download <- function(year) {
+  df <- archive_path()
+
+  if (!dir.exists(df)) {
+    dir.create(df)
+  }
+
+  download <- function(source) {
+    dest <- file.path(df, source)
+    if (!file.exists(dest)) {
+      message(paste(" Downloading ", source))
+      aws.s3::save_object(
+        source,
+        file = dest,
+        show_progress = TRUE,
+        bucket = "s3://tripdata/"
+      )
+    }
+  }
+
+  get_aws_bucket_df() |>
+    dplyr::filter(
+      stringr::str_starts(Key, as.character(year)),
+      stringr::str_ends(Key, ".zip")
+    ) |>
+    dplyr::pull(Key) |>
+    purrr::walk(download, .progress = TRUE)
+}
+
+archive_years <- function() {
+  get_aws_bucket_df() |>
+    dplyr::mutate(
+      year = as.integer(stringr::str_extract(Key, "^\\d{4}"))
+    ) |>
+    dplyr::filter(!is.na(year)) |>
+    dplyr::distinct(year) |>
+    dplyr::arrange(year) |>
+    dplyr::pull(year)
+}
+
 archive_read_2 <- function(f, p1, p2 = NULL) {
   ap <- file.path(archive_path(), f)
-
-  # assert::assert(file.exists(ap), paste("No such file:", ap))
-
+  # XXX assert::assert(fs::is_file(ap), paste("No such file:", ap))
   if (stringr::str_ends(p1, "csv")) {
     archive::archive_read(ap, p1)
   } else if (stringr::str_ends(p1, "zip")) {

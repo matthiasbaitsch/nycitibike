@@ -7,6 +7,10 @@ cache_path <- function(file = NULL) {
 }
 
 cache_path_trips_raw.rds <- function(year) {
+  cache_path(paste0("trips-raw-", year, ".rds"))
+}
+
+cache_path_trips.rds <- function(year) {
   cache_path(paste0("trips-", year, ".rds"))
 }
 

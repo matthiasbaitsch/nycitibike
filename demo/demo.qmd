@@ -16,52 +16,44 @@ devtools::load_all()
 Archives contain multiple CSV files with confusing content in a folder structure.
 
 ```{r}
-archive_ls(2013) |> gt()
+archive_ls(2013) |> gt_preview()
 ```
 
 Other archives contain archives, `path2` refers to the path inside the nested archive.
 
 ```{r}
-archive_ls(2022) |> gt()
+archive_ls(2022) |> gt_preview()
+```
+
+Content of archives is redundant.
+
+```{r}
+line_2 <- function(archive, path) {
+  archive_read_2(archive, path) |> read_lines(n_max = 2) |> pluck(2)
+}
+
+line_2(
+  "2013-citibike-tripdata.zip",
+  "2013-citibike-tripdata/201309-citibike-tripdata.csv"
+)
+line_2(
+  "2013-citibike-tripdata.zip",
+  "2013-citibike-tripdata/9_September/201309-citibike-tripdata_1.csv"
+)
 ```
 
 ## CSV files
 
-Content of CSV files is redundant.
-
-Line 2 of `2013-citibike-tripdata.zip: 2013-citibike-tripdata/201309-citibike-tripdata.csv`
-
-```{r}
-archive_read_2(
-  "2013-citibike-tripdata.zip",
-  "2013-citibike-tripdata/201309-citibike-tripdata.csv"
-) |>
-  read_lines(n_max = 2) |>
-  pluck(2)
-```
-
-Line 2 of `2013-citibike-tripdata.zip: 2013-citibike-tripdata/9_September/201309-citibike-tripdata_1.csv`
-
-```{r}
-archive_read_2(
-  "2013-citibike-tripdata.zip",
-  "2013-citibike-tripdata/9_September/201309-citibike-tripdata_1.csv"
-) |>
-  read_lines(n_max = 2) |>
-  pluck(2)
-```
-
 Headers in CSV files vary. In the table, year refers to the first and the last year a header shows up.
 
 ```{r}
-trips_list_csv_headers(with_years = TRUE) |>
-  gt()
+csv_list_headers(with_years = TRUE) |> gt()
 ```
 
 Date formats vary as well.
 
 ```{r}
-trips_list_years() |>
+archive_years() |>
   map(archive_ls) |>
   list_rbind() |>
   mutate(
@@ -74,23 +66,213 @@ trips_list_years() |>
   gt()
 ```
 
-### Trips
+## Trips
 
-Now we can read trips into a dataframe.
+Trips in a dataframe, individually by CSV file or collectively by year
 
 ```{r}
-d1 <- trips_read_one_file(
+trips_read_one_file(
   "2013-citibike-tripdata.zip",
   "2013-citibike-tripdata/201310-citibike-tripdata.csv"
-)
-d1 |> gt_preview()
-```
+) |>
+  gt_preview()
 
-```{r}
-d2 <- trips_read_one_file(
+trips_read_one_file(
   "2023-citibike-tripdata.zip",
   "2023-citibike-tripdata/202302-citibike-tripdata.zip",
   "202302-citibike-tripdata_2.csv"
-)
-d2 |> gt_preview()
+) |>
+  gt_preview()
+
+trips_read(2014, .progress = FALSE) |> gt_preview()
+```
+
+Trips
+
+```{r}
+d_trips <- trips_read(2023)
+d_trips_raw <- trips_raw_read(2023)
+# d_trips <- trips_read(2013)
+# d_trips_raw <- trips_raw_read(2013)
+```
+
+Station IDs are a bit of a mess in raw trips and tried to be fixed. We deal with the other obvious issues lateron.
+
+```{r}
+inspect <- function(d) {
+  d |>
+    select(starts_with("start_")) |>
+    filter(str_detect(start_station_id, "5436.09|5785.1")) |>
+    distinct() |>
+    arrange(start_station_id) |>
+    gt() |>
+    fmt_number(decimals = 8)
+}
+
+d_trips_raw |> inspect()
+d_trips |> inspect()
+```
+
+
+## Stations
+
+Extract stations from trips
+
+```{r}
+d_stations_raw <- d_trips |>
+  stations_raw_extract()
+d_stations_raw |> gt_preview()
+```
+
+Total number of IDs
+
+```{r}
+n_stations <- d_stations_raw |>
+  pull(station_id) |>
+  unique() |>
+  length()
+n_stations
+```
+
+Lots of missing data
+
+```{r}
+d_stations_raw |>
+  filter(if_any(everything(), ~ is.na(.x))) |>
+  gt_preview()
+```
+
+Differences can be subtle
+
+```{r}
+d_stations_raw |>
+  filter(str_detect(station_id, "3704.08")) |>
+  gt() |>
+  fmt_number(decimals = 14)
+```
+
+Or less subtle
+
+```{r}
+d_stations_raw |>
+  filter(str_detect(station_id, "3240.15")) |>
+  gt()
+```
+
+How clean up TODO move to function and test
+
+Drop NAs and round coordinates
+
+```{r}
+d1 <- d_stations_raw |>
+  drop_na(everything()) |>
+  mutate(
+    lat = round(lat, 6),
+    lng = round(lng, 6)
+  ) |>
+  distinct()
+
+duplicates <- function(d) {
+  d |>
+    distinct() |>
+    group_by(station_id) |>
+    filter(n() > 1) |>
+    ungroup()
+}
+
+d1d <- d1 |>
+  duplicates()
+
+d1d |>
+  gt_preview()
+```
+
+
+```{r}
+d1 |>
+  filter(str_detect(station_id, "3240.15")) |>
+  gt()
+```
+
+
+```{r}
+d2 <- d1 |>
+  distinct(station_id, station_name, .keep_all = T) |>
+  mutate(
+    station_name = str_replace_all(station_name, "\\bFt\\.", "Fort"),
+    station_name = str_replace_all(station_name, "\\bFt\\b", "Fort"),
+    station_name = str_replace_all(station_name, "\\bSt\\.", "St"),
+    station_name = str_replace_all(station_name, "\\bCir\\b", "Circle"),
+    station_name = str_replace_all(station_name, "\\bE\\b", "East"),
+    station_name = str_replace_all(station_name, "\\bW\\b", "West"),
+    station_name = str_replace_all(station_name, "\\bS\\b", "South"),
+    station_name = str_replace_all(station_name, "\\bAv\\b", "Avenue"),
+    station_name = str_replace_all(station_name, "\\bAve\\b", "Avenue"),
+    station_name = str_replace_all(station_name, "\\bSt\\b", "Street"),
+    station_name = str_replace_all(station_name, "\\bTce\\b", "Terrace"),
+    station_name = str_replace_all(station_name, "\\bPkwy\\b", "Parkway"),
+    station_name = str_replace_all(station_name, "\\bRd\\b", "Road"),
+    station_name = str_replace_all(station_name, "\\b1\\b", "1st"),
+    station_name = str_replace_all(station_name, "\\b2\\b", "2nd"),
+    station_name = str_replace_all(station_name, "\\b(\\d+)\\b", "\\1th"),
+    station_name = str_replace_all(station_name, "  ", " "),
+    station_name = str_replace_all(station_name, "^Pillar ", ""),
+    station_name = str_replace_all(station_name, "Johns", "John\\'s"),
+    station_name = str_replace_all(station_name, " \\(NE Corner\\)", ""),
+    station_name = str_replace_all(station_name, "corner", "Corner"),
+    station_name = str_replace_all(station_name, "th &", "th Street &"),
+    station_name = str_replace_all(station_name, "\\bAudobon\\b", "Audubon"),
+    station_name = str_replace_all(station_name, "\\bLab - NYC - M\\b", "Lab - NYC - Monolith"),
+    station_name = str_replace_all(station_name, "5th Avenue & 67th Street", "5th Avenue & 66th Street"),
+    station_name = str_replace_all(station_name, "91th Street & 23th Avenue", "92th Street & 23th Avenue"),
+    station_name = str_replace_all(station_name, "^Goulden Avenue & Bedford Park Blvd$", "Goulden Avenue & Bedford Park Blvd West"),
+    station_name = str_replace_all(station_name, "West 168th Street & Fort Washington Avenue", "West 168th South Street & Fort Washington Avenue"),
+  ) |>
+  duplicates()
+d2
+```
+
+
+```{r}
+d2 |>
+  mutate(
+    x = stringi::stri_escape_unicode(station_name)
+  )
+```
+
+
+```{r}
+d_stations_raw |>
+  drop_na(everything()) |>
+  select(-lat, -lng) |>
+  duplicates() |>
+  distinct() |>
+  group_by(station_id, station_name) |>
+  summarise(n = n()) 
+```
+
+
+```{r}
+  ds1 <- d_trips |>
+    select(
+      station_id = start_station_id,
+      station_name = start_station_name,
+      lat = start_lat,
+      lng = start_lng
+    )
+  ds2 <- d_trips |>
+    select(
+      station_id = end_station_id,
+      station_name = end_station_name,
+      lat = end_lat,
+      lng = end_lng
+    )
+  dd <- bind_rows(ds1, ds2) |>
+    drop_na(lat, lng) |>
+    group_by(station_id, station_name) |>
+    summarise(n = n()) |>
+    arrange(station_id, desc(n)) |>
+    slice_head(n = 3) |>
+    group_by(station_id) |>
+    filter(n() > 1)
 ```
