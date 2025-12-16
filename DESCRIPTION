@@ -1,9 +1,9 @@
-Package: citybikenyc
+Package: nycitibike
 Title: New York Citybike Trips
 Version: 0.0.0.9000
 Authors@R: 
     person("Matthias", "Baitsch", , "matthias.baitsch@me.com", role = c("aut", "cre"))
-Description: Convenient access to New York Citybike trip data.
+Description: Convenient access to New York Citibike trip data.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
@@ -15,7 +15,6 @@ Imports:
     dplyr,
     fs,
     here,
-    patchwork,
     purrr,
     R.cache,
     stringr,
