@@ -1,9 +1,17 @@
 cache_path <- function(file = NULL) {
   if (is.null(file)) {
-    file.path(archive_path(), "cache")
+    fs::path(archive_path(), "cache")
   } else {
-    file.path(archive_path(), "cache", file)
+    fs::path(archive_path(), "cache", file)
   }
+}
+
+cache_clear <- function() {
+  d <- cache_path()
+  if (fs::dir_exists(d)) {
+    fs::dir_delete(d)
+  }
+  R.cache::clearCache(prompt = FALSE)
 }
 
 cache_path_trips_raw.rds <- function(year) {
@@ -14,10 +22,6 @@ cache_path_trips.rds <- function(year) {
   cache_path(paste0("trips-", year, ".rds"))
 }
 
-cache_clear <- function() {
-  fs::dir_delete(cache_path())
-}
-
 #' Unzip file from archive to cache folder.
 #'
 #' @param archive Archive file
@@ -25,18 +29,17 @@ cache_clear <- function() {
 #'
 #' @returns Path to chached file
 cache_archive <- function(archive, path) {
-  cachedir <- file.path(cache_path(), paste0(basename(archive), ".dir"))
-  path <- file.path(cachedir, path)
-
-  # Create cache folder if needed
-  if (!dir.exists(cachedir)) {
-    dir.create(cachedir, recursive = TRUE)
+  cachedir <- cache_path(paste0(basename(archive), ".dir"))
+  destfile <- fs::path(cachedir, path)
+  if (!fs::file_exists(destfile)) {
+    if (!fs::dir_exists(cachedir)) {
+      fs::dir_create(cachedir, recurse = TRUE)
+    }
+    archive::archive_extract(
+      archive_path(archive),
+      dir = cachedir,
+      files = path
+    )
   }
-
-  # Extract if path does not exist
-  if (!file.exists(path)) {
-    archive::archive_extract(archive, dir = cachedir, files = path)
-  }
-
-  path
+  destfile
 }

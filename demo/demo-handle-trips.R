@@ -17,8 +17,8 @@ system.time(
 )
 
 tmp <- tempdir()
-d1.rds <- file.path(tmp, "d1.rds")
-d1.parquet <- file.path(tmp, "d1.parquet")
+d1.rds <- fs::path(tmp, "d1.rds")
+d1.parquet <- fs::path(tmp, "d1.parquet")
 
 write_rds(d1, file = d1.rds)
 write_dataset(d1, path = d1.parquet)

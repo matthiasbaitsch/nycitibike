@@ -2,16 +2,27 @@ archive_path <- function(file = NULL) {
   ifelse(
     is.null(file),
     here::here("data"),
-    file.path(here::here("data"), file)
+    fs::path(here::here("data"), file)
   )
 }
 
-get_aws_bucket_df <- function() {
+archive_aws_bucket_df <- function() {
   R.cache::evalWithMemoization(
     aws.s3::get_bucket_df(
       bucket = "s3://tripdata/"
     )
   )
+}
+
+archive_years <- function() {
+  archive_aws_bucket_df() |>
+    dplyr::mutate(
+      year = as.integer(stringr::str_extract(Key, "^\\d{4}"))
+    ) |>
+    dplyr::filter(!is.na(year)) |>
+    dplyr::distinct(year) |>
+    dplyr::arrange(year) |>
+    dplyr::pull(year)
 }
 
 archive_download <- function(year, .progress = TRUE) {
@@ -30,33 +41,24 @@ archive_download <- function(year, .progress = TRUE) {
     }
   }
 
-  files <- get_aws_bucket_df() |>
+  files <- archive_aws_bucket_df() |>
     dplyr::filter(
       stringr::str_starts(Key, as.character(year)),
       stringr::str_ends(Key, ".zip")
     ) |>
     dplyr::pull(Key) |>
-    walk(download, .progress = .progress)
-}
-
-archive_years <- function() {
-  get_aws_bucket_df() |>
-    dplyr::mutate(
-      year = as.integer(stringr::str_extract(Key, "^\\d{4}"))
-    ) |>
-    dplyr::filter(!is.na(year)) |>
-    dplyr::distinct(year) |>
-    dplyr::arrange(year) |>
-    dplyr::pull(year)
+    purrr::walk(download, .progress = .progress)
 }
 
 archive_read_2 <- function(f, p1, p2 = NULL) {
-  ap <- file.path(archive_path(), f)
-  # XXX assert::assert(fs::is_file(ap), paste("No such file:", ap))
+  assert::assert(
+    fs::file_exists(archive_path(f)),
+    msg = paste("No such file:", archive_path(f))
+  )
   if (stringr::str_ends(p1, "csv")) {
-    archive::archive_read(ap, p1)
+    archive::archive_read(archive_path(f), p1)
   } else if (stringr::str_ends(p1, "zip")) {
-    archive::archive_read(cache_archive(ap, p1), p2)
+    archive::archive_read(cache_archive(f, p1), p2)
   } else {
     stop("Should not happen")
   }
@@ -93,10 +95,9 @@ archive_ls <- function(year) {
     }
   })
 
-  list.files(
+  fs::dir_ls(
     path = archive_path(),
-    pattern = paste0("^", year, ".*\\.zip"),
-    full.names = TRUE
+    regexp = paste0("/", year, ".*\\.zip")
   ) |>
     purrr::map(list_one_archive) |>
     dplyr::bind_rows() |>

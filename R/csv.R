@@ -16,6 +16,61 @@ csv_date_parsers <- c(
   \(d) lubridate::mdy_hm(d, tz = "America/New_York")
 )
 
+csv_header <- function(archive, path, path2) {
+  archive_read_2(archive, path, path2) |>
+    readr::read_lines(n_max = 1)
+}
+
+csv_list_haeders_no_cache <- function(years, with_years, .reduce) {
+  read_one_header <- function(archive, path, path2, depth, year) {
+    dplyr::tibble(
+      year = year,
+      header = csv_header(archive, path, path2)
+    )
+  }
+
+  if (is.character(years) && stringr::str_equal(years, "all")) {
+    years <- archive_years()
+  }
+
+  d <- years |>
+    purrr::map(archive_ls) |>
+    purrr::list_rbind() |>
+    purrr::pmap(read_one_header) |>
+    purrr::list_rbind()
+
+  if (.reduce) {
+    d <- d |>
+      dplyr::arrange(year) |>
+      dplyr::group_by(header) |>
+      dplyr::slice(c(1, dplyr::n())) |>
+      dplyr::ungroup() |>
+      dplyr::distinct() |>
+      dplyr::arrange(year)
+  }
+
+  if (!with_years) {
+    d <- d |>
+      dplyr::select(header) |>
+      dplyr::distinct() |>
+      dplyr::arrange(header)
+  }
+
+  d
+}
+
+csv_list_headers <- function(
+  years = "all",
+  with_years = FALSE,
+  .reduce = TRUE
+) {
+  R.cache::evalWithMemoization(
+    csv_list_haeders_no_cache(years, with_years, .reduce),
+    key = list(years = years, with_years = with_years, .reduce = .reduce)
+  )
+}
+
+
 # format = 1: Old form lowercase, quoted (""\"tripduration\",\"starttime\",\"stoptime\",...")
 # format = 2: Old form lowercase ("tripduration,starttime,stoptime,...")
 # format = 3: Old form uppercase ("Trip Duration,Start Time,Stop Time,...")
@@ -38,58 +93,6 @@ csv_header_from_format <- function(format, .split = TRUE) {
     h <- h |> stringr::str_split_1(",")
   }
   h
-}
-
-csv_header <- function(archive, path, path2) {
-  archive_read_2(archive, path, path2) |>
-    readr::read_lines(n_max = 1)
-}
-
-csv_list_headers <- function(
-  years = "all",
-  with_years = FALSE,
-  .reduce = TRUE
-) {
-  read_one_header <- function(archive, path, path2, depth, year) {
-    dplyr::tibble(
-      year = year,
-      header = csv_header(archive, path, path2)
-    )
-  }
-
-  R.cache::evalWithMemoization(
-    {
-      if (is.character(years) && stringr::str_equal(years, "all")) {
-        years <- archive_years()
-      }
-
-      d <- years |>
-        purrr::map(archive_ls) |>
-        purrr::list_rbind() |>
-        purrr::pmap(read_one_header) |>
-        purrr::list_rbind()
-
-      if (.reduce) {
-        d <- d |>
-          dplyr::arrange(year) |>
-          dplyr::group_by(header) |>
-          dplyr::slice(c(1, dplyr::n())) |>
-          dplyr::ungroup() |>
-          dplyr::distinct() |>
-          dplyr::arrange(year)
-      }
-
-      if (!with_years) {
-        d <- d |>
-          dplyr::select(header) |>
-          dplyr::distinct() |>
-          dplyr::arrange(header)
-      }
-
-      d
-    },
-    key = list(years = years, with_years = with_years, .reduce = .reduce)
-  )
 }
 
 csv_format_from_header <- function(h) {

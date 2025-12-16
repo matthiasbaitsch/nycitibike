@@ -69,7 +69,7 @@ trips_read_one_file <- function(archive, path, path2, depth = NA, year = NA) {
 # Cache all years with `archive_years() |> walk(trips_raw_cache)`
 trips_raw_cache <- function(year, .progress = TRUE) {
   cf <- cache_path_trips_raw.rds(year)
-  if (!file.exists(cf)) {
+  if (!fs::file_exists(cf)) {
     if (.progress) {
       message(paste("Reading raw trips for", year))
     }
@@ -83,22 +83,22 @@ trips_raw_cache <- function(year, .progress = TRUE) {
 }
 
 # Cache all years with `archive_years() |> walk(trips_cache)`
-trips_cache <- function(year, .progress = TRUE) {
-  cf <- cache_path_trips.rds(year)
-  if (!file.exists(cf)) {
-    d <- trips_raw_read(year, .progress) |>
-      dplyr::mutate(
-        start_station_id = stations_id_repair(start_station_id),
-        end_station_id = stations_id_repair(end_station_id)
-      )
-    readr::write_rds(d, cf)
-    d
-  }
-}
+# trips_cache <- function(year, .progress = TRUE) {
+#   cf <- cache_path_trips.rds(year)
+#   if (!fs::file_exists(cf)) {
+#     d <- trips_raw_read(year, .progress) |>
+#       dplyr::mutate(
+#         start_station_id = stations_id_repair(start_station_id),
+#         end_station_id = stations_id_repair(end_station_id)
+#       )
+#     readr::write_rds(d, cf)
+#     d
+#   }
+# }
 
 trips_raw_read <- function(year, .progress = TRUE) {
   cf <- cache_path_trips_raw.rds(year)
-  if (file.exists(cf)) {
+  if (fs::file_exists(cf)) {
     d <- readr::read_rds(cf)
   } else {
     d <- trips_raw_cache(year, .progress = .progress)
@@ -106,12 +106,12 @@ trips_raw_read <- function(year, .progress = TRUE) {
   d
 }
 
-trips_read <- function(year, .progress = TRUE) {
-  cf <- cache_path_trips.rds(year)
-  if (file.exists(cf)) {
-    d <- readr::read_rds(cf)
-  } else {
-    d <- trips_cache(year, .progress = .progress)
-  }
-  d
-}
+# trips_read <- function(year, .progress = TRUE) {
+#   cf <- cache_path_trips.rds(year)
+#   if (fs::file_exists(cf)) {
+#     d <- readr::read_rds(cf)
+#   } else {
+#     d <- trips_cache(year, .progress = .progress)
+#   }
+#   d
+# }

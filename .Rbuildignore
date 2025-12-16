@@ -1,3 +1,5 @@
 ^citybikenyc\.Rproj$
 ^\.Rproj\.user$
 ^LICENSE\.md$
+^\.vscode$
+^[.]?air[.]toml$

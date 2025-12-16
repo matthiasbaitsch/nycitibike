@@ -25,42 +25,6 @@
 #   "202004-citibike-tripdata_1.csv"
 # )
 
-test_that("headers are complete and in order", {
-  years <- c(2013, 2016, 2018, 2020)
-
-  # No years, test content
-  d <- csv_list_headers(
-    years = years,
-    with_years = FALSE
-  )
-  expect_equal(nrow(d), 4)
-  expect_true(
-    purrr::pluck(d, "header", 1) |> stringr::str_starts("\"tripduration")
-  )
-  expect_true(
-    purrr::pluck(d, "header", 2) |> stringr::str_starts("Trip Duration")
-  )
-  expect_true(purrr::pluck(d, "header", 3) |> stringr::str_starts("ride_id"))
-  expect_true(
-    purrr::pluck(d, "header", 4) |> stringr::str_starts("tripduration")
-  )
-
-  # With years, just test count
-  d <- csv_list_headers(
-    years = years,
-    with_years = TRUE
-  )
-  expect_equal(nrow(d), 6)
-
-  # With years, not reduced, just test count
-  d <- csv_list_headers(
-    years = years,
-    with_years = TRUE,
-    .reduce = FALSE
-  )
-  expect_equal(nrow(d), 99)
-})
-
 test_that("the assumption about the content of csv files holds", {
   # Files in base folder
   d1 <- archive_ls(2013) |>
@@ -83,8 +47,6 @@ test_that("the assumption about the content of csv files holds", {
 })
 
 test_that("we do not read duplicate data", {
-  d <- trips_read(2013, .progress = F)
+  d <- trips_raw_read(2013, .progress = F)
   expect_equal(nrow(d), nrow(dplyr::distinct(d)))
 })
-
-

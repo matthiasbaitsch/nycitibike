@@ -21,7 +21,6 @@ test_that("reading from an archive within an archive works", {
 
 test_that("listing an archive with CSV files works", {
   d <- archive_ls(2013)
-
   expect_equal(purrr::pluck(d, "archive", 1), "2013-citibike-tripdata.zip")
   expect_equal(nrow(d), 17)
 })
