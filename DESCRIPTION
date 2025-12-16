@@ -11,6 +11,7 @@ RoxygenNote: 7.3.3
 Imports: 
     archive,
     aws.s3,
+    curl,
     dplyr,
     fs,
     here,

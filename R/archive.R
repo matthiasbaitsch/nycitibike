@@ -1,4 +1,10 @@
-archive_path <- function() here::here("data")
+archive_path <- function(file = NULL) {
+  ifelse(
+    is.null(file),
+    here::here("data"),
+    file.path(here::here("data"), file)
+  )
+}
 
 get_aws_bucket_df <- function() {
   R.cache::evalWithMemoization(
@@ -8,33 +14,29 @@ get_aws_bucket_df <- function() {
   )
 }
 
-archive_download <- function(year) {
-  df <- archive_path()
-
-  if (!dir.exists(df)) {
-    dir.create(df)
+archive_download <- function(year, .progress = TRUE) {
+  if (!fs::dir_exists(archive_path())) {
+    fs::dir_create(archive_path())
   }
 
-  download <- function(source) {
-    dest <- file.path(df, source)
-    if (!file.exists(dest)) {
-      message(paste(" Downloading ", source))
-      aws.s3::save_object(
-        source,
-        file = dest,
-        show_progress = TRUE,
-        bucket = "s3://tripdata/"
-      )
+  download <- function(f) {
+    destfile <- archive_path(f)
+    if (!fs::file_exists(destfile)) {
+      url <- paste0("https://s3.amazonaws.com/tripdata/", f)
+      if (.progress) {
+        message(paste("Downloading ", f))
+      }
+      curl::multi_download(url, destfile, progress = .progress, resume = TRUE)
     }
   }
 
-  get_aws_bucket_df() |>
+  files <- get_aws_bucket_df() |>
     dplyr::filter(
       stringr::str_starts(Key, as.character(year)),
       stringr::str_ends(Key, ".zip")
     ) |>
     dplyr::pull(Key) |>
-    purrr::walk(download, .progress = TRUE)
+    walk(download, .progress = .progress)
 }
 
 archive_years <- function() {
